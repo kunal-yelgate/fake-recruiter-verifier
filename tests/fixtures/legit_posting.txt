@@ -1,0 +1,27 @@
+Software Engineer, Infrastructure Platform
+
+Company: Stripe, Inc.
+Job Title: Software Engineer, Infrastructure Platform
+Location: Seattle, WA / San Francisco, CA / Remote (US)
+Contact Email: talent@stripe.com
+Careers Portal: https://stripe.com/jobs
+
+About Stripe:
+Stripe is a financial infrastructure platform for businesses. Millions of companies—from the world’s largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. Our mission is to increase the GDP of the internet.
+
+About the Role:
+We are looking for an experienced software engineer to join our core Infrastructure Platform engineering team. You will design, build, and maintain the underlying compute, deployment pipeline, and observability foundation powering billions of transactions globally.
+
+Responsibilities:
+- Build reliable, performant, and scalable distributed systems using Go, Ruby, and Kubernetes.
+- Collaborate across multidisciplinary teams including security, database reliability, and application developers.
+- Participate in on-call rotations and lead incident blameless post-mortems.
+
+Qualifications:
+- 4+ years of professional software engineering experience with distributed backend systems.
+- Strong proficiency in concurrent systems programming, system architecture, and Linux internals.
+- Proven track record of improving operational reliability and platform latency at scale.
+- Excellent written and oral communication skills.
+
+Stripe provides competitive base pay, equity grant awards, comprehensive health benefits, and flexible time off.
+To apply, submit your application directly through our careers portal at https://stripe.com/jobs or contact talent@stripe.com.
