@@ -1,0 +1,168 @@
+"""Async HTTP client for SerpApi with SQLite query caching and demo mock fallback."""
+
+import asyncio
+from typing import Any, Dict, Optional
+import httpx
+from app.config import settings
+from app.cache import cache
+
+SERPAPI_ENDPOINT = "https://serpapi.com/search.json"
+
+
+class SerpApiClient:
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key or settings.serpapi_key
+
+    async def search(self, engine: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Perform a cached SerpApi search query across specified engine."""
+        search_params = {"engine": engine, **params}
+
+        # 1. Check local SQLite cache first (24h TTL)
+        cached_result = cache.get(engine, search_params)
+        if cached_result is not None:
+            return cached_result
+
+        # 2. If no API key is provided, return simulated live search responses
+        if not self.api_key or self.api_key.strip() in ("", "your_serpapi_key_here"):
+            mock_data = self._generate_mock_response(engine, params)
+            # Cache mock data as well for repeat demo tests
+            cache.set(engine, search_params, mock_data)
+            return mock_data
+
+        # 3. Call live SerpApi HTTP API
+        request_params = {**search_params, "api_key": self.api_key}
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            try:
+                response = await client.get(SERPAPI_ENDPOINT, params=request_params)
+                response.raise_for_status()
+                data = response.json()
+                data["_is_mock"] = False
+                cache.set(engine, search_params, data)
+                return data
+            except httpx.HTTPStatusError as exc:
+                # If unauthorized/quota exhausted, fall back to mock with warning
+                mock_data = self._generate_mock_response(engine, params)
+                mock_data["_api_error"] = f"SerpApi HTTP {exc.response.status_code}: {exc.response.text}"
+                return mock_data
+            except Exception as exc:
+                mock_data = self._generate_mock_response(engine, params)
+                mock_data["_api_error"] = str(exc)
+                return mock_data
+
+    def _generate_mock_response(self, engine: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate realistic mock data when SERPAPI_KEY is not configured yet."""
+        query = str(params.get("q", params.get("query", ""))).lower()
+
+        # Check for typical scam indicators in the simulated query
+        is_suspicious = any(
+            term in query
+            for term in [
+                "telegram",
+                "whatsapp",
+                "check deposit",
+                "equipment fee",
+                "crypto",
+                "amazon-careers.net",
+                "apexglobal-staffing.org",
+                "quickhiring",
+                "work-from-home-instant",
+                "hr-desk",
+                "gmail.com",
+            ]
+        )
+
+        data: Dict[str, Any] = {"_is_mock": True, "search_parameters": params}
+
+        if engine == "google_maps":
+            if "google" in query or "microsoft" in query or "apple" in query or "stripe" in query:
+                data["place_results"] = {
+                    "title": params.get("q", "Corporate Headquarters"),
+                    "address": "1600 Amphitheatre Pkwy, Mountain View, CA 94043",
+                    "rating": 4.6,
+                    "reviews": 1824,
+                    "verified": True,
+                }
+                data["local_results"] = [data["place_results"]]
+            elif is_suspicious or "apex" in query or "global staffing" in query:
+                data["local_results"] = []
+            else:
+                data["local_results"] = [
+                    {
+                        "title": params.get("q", "Company Office"),
+                        "address": "100 Innovation Way, Suite 400",
+                        "rating": 4.1,
+                    }
+                ]
+
+        elif engine == "google_news":
+            if is_suspicious or "scam" in query:
+                data["news_results"] = [
+                    {
+                        "title": "Alert: Job seekers warned about fake check employment scam impersonating recruiters",
+                        "link": "https://www.ftc.gov/news-events/news/fake-job-scams",
+                        "source": "FTC Consumer Alert",
+                        "date": "2 days ago",
+                    },
+                    {
+                        "title": "Victims lose thousands in remote data entry job fraud",
+                        "link": "https://www.bbb.org/article/news-releases/remote-work-scams",
+                        "source": "Better Business Bureau",
+                        "date": "1 week ago",
+                    },
+                ]
+            else:
+                data["news_results"] = []
+
+        else:  # engine == 'google'
+            if "site:linkedin.com" in query:
+                if is_suspicious or "apex" in query:
+                    data["organic_results"] = []
+                else:
+                    data["organic_results"] = [
+                        {
+                            "title": f"Official Careers & People | LinkedIn",
+                            "link": f"https://www.linkedin.com/company/{params.get('q', 'company').replace(' ', '-').lower()}",
+                            "snippet": "Verified corporate profile on LinkedIn. View open roles, employee headcount and leadership.",
+                        }
+                    ]
+            elif '"' in query:  # Duplicate exact phrase check
+                if is_suspicious:
+                    data["organic_results"] = [
+                        {"title": "Easy Remote Job $45/hr", "link": "https://forum.free-jobs-board.xyz/post/1049"},
+                        {"title": "Immediate Hiring Data Entry", "link": "https://pastebin.com/raw/k93Jdx"},
+                        {"title": "Telegram Job Chat Work From Home", "link": "https://telegra.ph/Job-Details-09"},
+                        {"title": "Urgent Freelance Opening", "link": "https://workboard.online/job/4921"},
+                        {"title": "Weekly payout guaranteed", "link": "https://classifieds-spam.net/ads/992"},
+                    ]
+                else:
+                    data["organic_results"] = [
+                        {
+                            "title": "Careers at Official Portal",
+                            "link": "https://careers.company.com/openings",
+                            "snippet": "Official listing on verified company careers portal.",
+                        }
+                    ]
+            else:
+                # General domain or recruiter search
+                if is_suspicious and ("amazon-careers" in query or "gmail.com" in query):
+                    data["organic_results"] = [
+                        {
+                            "title": "Did you mean amazon.com? Beware of impostor career domains",
+                            "link": "https://www.amazon.jobs",
+                            "snippet": "Amazon only conducts recruitment via official @amazon.com email addresses.",
+                        }
+                    ]
+                else:
+                    data["organic_results"] = [
+                        {
+                            "title": f"Official Website - {params.get('q', '')}",
+                            "link": "https://www.example.com",
+                            "snippet": "Official corporate domain with SSL certificate and corporate directory.",
+                        }
+                    ]
+
+        return data
+
+
+# Shared client instance
+serpapi_client = SerpApiClient()
