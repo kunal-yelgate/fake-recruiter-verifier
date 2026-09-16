@@ -152,11 +152,35 @@ class SerpApiClient:
                             "snippet": "Amazon only conducts recruitment via official @amazon.com email addresses.",
                         }
                     ]
+                elif "official website" in query:
+                    # Dynamically generate legitimate official corporate domain from company query
+                    clean_name = query.replace("official website", "").replace('"', '').replace("inc.", "").replace("llc", "").strip()
+                    company_slug = "".join(c for c in clean_name if c.isalnum()).lower() or "company"
+                    data["organic_results"] = [
+                        {
+                            "title": f"{clean_name.title()} | Official Corporate Website",
+                            "link": f"https://{company_slug}.com",
+                            "snippet": f"Official verified website of {clean_name.title()}. Explore products, corporate directory and careers.",
+                        }
+                    ]
+                elif "recruiter" in query or "talent" in query:
+                    # Recruiter check
+                    if is_suspicious:
+                        data["organic_results"] = []
+                    else:
+                        data["organic_results"] = [
+                            {
+                                "title": f"Talent Acquisition & Leadership - {params.get('q', '')}",
+                                "link": "https://www.linkedin.com/in/verified-recruiter",
+                                "snippet": f"Verified recruitment and human resources team member.",
+                            }
+                        ]
                 else:
+                    clean_name = "".join(c for c in query if c.isalnum()).lower()[:15] or "company"
                     data["organic_results"] = [
                         {
                             "title": f"Official Website - {params.get('q', '')}",
-                            "link": "https://www.example.com",
+                            "link": f"https://{clean_name}.com",
                             "snippet": "Official corporate domain with SSL certificate and corporate directory.",
                         }
                     ]
