@@ -1,161 +1,22 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Job Scam Verifier | Cross-Check Postings with Live SerpApi Search Signals</title>
-  <meta name="description" content="Verify job postings against live Google Maps, LinkedIn, Google News, and duplicate search data to detect recruitment scams and identity theft.">
-
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
-  <link rel="stylesheet" href="./styles.css">
-</head>
-<body>
-  <div class="container">
-
-    <!-- Header Navigation -->
-    <header class="app-header">
-      <div class="brand-wrapper">
-        <div class="brand-icon" aria-hidden="true">🛡️</div>
-        <div>
-          <h1 class="app-title">Job Scam Verifier</h1>
-          <p class="app-subtitle">Live search corroboration backed by SerpApi evidence</p>
-        </div>
-      </div>
-      <div class="header-actions">
-        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Toggle theme">
-          <span id="themeIcon">☀️</span>
-          <span id="themeLabel">Light</span>
-        </button>
-      </div>
-    </header>
-
-    <!-- Main Posting Submission Card -->
-    <main>
-      <section class="card">
-        <h2 class="card-title">Paste Job Posting or Recruiter Message</h2>
-        <p class="card-desc">
-          We cross-check company footprint, LinkedIn legitimacy, lookalike domains, duplicate forum spam, and news reports in parallel.
-        </p>
-
-        <!-- Quick Sample Buttons -->
-        <div class="sample-pills">
-          <span class="pill-label">Test Samples:</span>
-          <button type="button" id="loadScamBtn" class="pill-btn scam">⚠️ Load Scam Sample (Apex Global)</button>
-          <button type="button" id="loadLegitBtn" class="pill-btn legit">✅ Load Legit Sample (Stripe)</button>
-          <button type="button" id="clearBtn" class="pill-btn">Clear</button>
-        </div>
-
-        <!-- Textarea Input -->
-        <div class="textarea-wrapper">
-          <textarea
-            id="postingInput"
-            class="job-input"
-            placeholder="Paste the full job posting description, recruiter email, or message here... (e.g. Company name, email, compensation, requirements)"
-            aria-label="Job Posting Text"
-            required
-          ></textarea>
-        </div>
-
-        <div class="action-row">
-          <span id="charCount" class="card-desc" style="margin: 0;">0 characters</span>
-          <button type="button" id="verifyBtn" class="btn-primary">
-            <span>Verify with Live SerpApi</span>
-            <span>→</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- Loading State Indicator -->
-      <section id="loadingState" class="loading-container" aria-live="polite">
-        <div class="spinner"></div>
-        <h3>Cross-Checking Live Signals...</h3>
-        <div class="loading-steps">
-          <span id="loadingStepText">Querying Google Maps, LinkedIn corporate rosters, Google News & Lookalike domains</span>
-        </div>
-      </section>
-
-      <!-- Results Dashboard Container -->
-      <section id="resultsDashboard" class="results-dashboard" aria-live="polite">
-
-        <!-- Verdict Header Banner & Gauge -->
-        <div id="verdictBanner" class="verdict-header">
-          <div class="gauge-section">
-            <div id="scoreCircle" class="score-circle">
-              <span id="scoreNum" class="score-num">--</span>
-              <span class="score-label">Risk Score</span>
-            </div>
-            <div>
-              <span id="verdictBadge" class="verdict-badge">Analyzing</span>
-              <h2 id="verdictTitle" style="font-size: 1.5rem; font-weight: 700; margin-top: 4px;">--</h2>
-            </div>
-          </div>
-          <div class="verdict-text-block">
-            <p id="verdictSummary" class="verdict-summary"></p>
-            <div id="mockAlert" style="display: none; margin-top: 8px; font-size: 0.75rem; color: var(--color-warning);">
-              ℹ️ Demo Mode: Simulating live search signals (add SERPAPI_KEY in .env for live API queries)
-            </div>
-          </div>
-        </div>
-
-        <!-- Extracted Entities Grid -->
-        <div class="card">
-          <h3 class="card-title" style="margin-bottom: 0.75rem;">Extracted Entities</h3>
-          <div class="entities-grid">
-            <div class="entity-card">
-              <div class="entity-label">Company</div>
-              <div id="entityCompany" class="entity-val">--</div>
-            </div>
-            <div class="entity-card">
-              <div class="entity-label">Job Title</div>
-              <div id="entityTitle" class="entity-val">--</div>
-            </div>
-            <div class="entity-card">
-              <div class="entity-label">Recruiter</div>
-              <div id="entityRecruiter" class="entity-val">--</div>
-            </div>
-            <div class="entity-card">
-              <div class="entity-label">Claimed Domain / Email</div>
-              <div id="entityDomain" class="entity-val">--</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Live SerpApi Evidence Breakdown -->
-        <div class="card">
-          <h3 class="card-title">Live Search Evidence Breakdown</h3>
-          <p class="card-desc">Every score adjustment links directly to the real-world search query that verified or flagged it.</p>
-
-          <div class="table-wrapper">
-            <table class="evidence-table">
-              <thead>
-                <tr>
-                  <th style="width: 24%;">Signal & Engine</th>
-                  <th style="width: 12%;">Score Delta</th>
-                  <th style="width: 14%;">Status</th>
-                  <th style="width: 50%;">Finding & Direct Evidence</th>
-                </tr>
-              </thead>
-              <tbody id="signalsTableBody">
-                <!-- Dynamically injected via app.js -->
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-      </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="app-footer">
-      <p>Job Scam Verifier • Powered by SerpApi live search signals • Base score 50 (Adjusted & clamped to 0–100)</p>
-    </footer>
-
-  </div>
-
-  <script src="./app.js"></script>
-</body>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Job Scam Verifier | Cross-Check Postings with Live SerpApi Search Signals</title>
+    <meta
+      name="description"
+      content="Verify job postings against live Google Maps, LinkedIn, Google News, and duplicate search data to detect recruitment scams and identity theft."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
