@@ -95,7 +95,7 @@ class SerpApiClient:
                 ]
 
         elif engine == "google_news":
-            if is_suspicious or "scam" in query:
+            if is_suspicious:
                 data["news_results"] = [
                     {
                         "title": "Alert: Job seekers warned about fake check employment scam impersonating recruiters",
@@ -125,6 +125,37 @@ class SerpApiClient:
                             "snippet": "Verified corporate profile on LinkedIn. View open roles, employee headcount and leadership.",
                         }
                     ]
+            elif "official website" in query:
+                # Lookalike vs official corporate website search
+                if is_suspicious and ("amazon-careers" in query or "apex" in query):
+                    data["organic_results"] = [
+                        {
+                            "title": "Warning: Beware of impostor career domains",
+                            "link": "https://careers.verified-portal.com",
+                            "snippet": "Beware of unverified third-party recruiters using similar names.",
+                        }
+                    ]
+                else:
+                    clean_name = query.replace("official website", "").replace('"', '').replace("inc.", "").replace("llc", "").strip()
+                    company_slug = "".join(c for c in clean_name if c.isalnum()).lower() or "company"
+                    data["organic_results"] = [
+                        {
+                            "title": f"{clean_name.title()} | Official Corporate Website",
+                            "link": f"https://{company_slug}.com",
+                            "snippet": f"Official verified website of {clean_name.title()}.",
+                        }
+                    ]
+            elif "recruiter" in query or "talent" in query:
+                if is_suspicious:
+                    data["organic_results"] = []
+                else:
+                    data["organic_results"] = [
+                        {
+                            "title": f"Talent Acquisition & Leadership - {params.get('q', '')}",
+                            "link": "https://www.linkedin.com/in/verified-recruiter",
+                            "snippet": "Verified recruitment and human resources team member.",
+                        }
+                    ]
             elif '"' in query:  # Duplicate exact phrase check
                 if is_suspicious:
                     data["organic_results"] = [
@@ -143,47 +174,14 @@ class SerpApiClient:
                         }
                     ]
             else:
-                # General domain or recruiter search
-                if is_suspicious and ("amazon-careers" in query or "gmail.com" in query):
-                    data["organic_results"] = [
-                        {
-                            "title": "Did you mean amazon.com? Beware of impostor career domains",
-                            "link": "https://www.amazon.jobs",
-                            "snippet": "Amazon only conducts recruitment via official @amazon.com email addresses.",
-                        }
-                    ]
-                elif "official website" in query:
-                    # Dynamically generate legitimate official corporate domain from company query
-                    clean_name = query.replace("official website", "").replace('"', '').replace("inc.", "").replace("llc", "").strip()
-                    company_slug = "".join(c for c in clean_name if c.isalnum()).lower() or "company"
-                    data["organic_results"] = [
-                        {
-                            "title": f"{clean_name.title()} | Official Corporate Website",
-                            "link": f"https://{company_slug}.com",
-                            "snippet": f"Official verified website of {clean_name.title()}. Explore products, corporate directory and careers.",
-                        }
-                    ]
-                elif "recruiter" in query or "talent" in query:
-                    # Recruiter check
-                    if is_suspicious:
-                        data["organic_results"] = []
-                    else:
-                        data["organic_results"] = [
-                            {
-                                "title": f"Talent Acquisition & Leadership - {params.get('q', '')}",
-                                "link": "https://www.linkedin.com/in/verified-recruiter",
-                                "snippet": f"Verified recruitment and human resources team member.",
-                            }
-                        ]
-                else:
-                    clean_name = "".join(c for c in query if c.isalnum()).lower()[:15] or "company"
-                    data["organic_results"] = [
-                        {
-                            "title": f"Official Website - {params.get('q', '')}",
-                            "link": f"https://{clean_name}.com",
-                            "snippet": "Official corporate domain with SSL certificate and corporate directory.",
-                        }
-                    ]
+                clean_name = "".join(c for c in query if c.isalnum()).lower()[:15] or "company"
+                data["organic_results"] = [
+                    {
+                        "title": f"Official Website - {params.get('q', '')}",
+                        "link": f"https://{clean_name}.com",
+                        "snippet": "Official corporate domain with SSL certificate and corporate directory.",
+                    }
+                ]
 
         return data
 
