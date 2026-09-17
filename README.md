@@ -38,45 +38,84 @@ evidence links back to the SerpApi result that produced it.
 
 ```
 fake-recruiter-verifier/
-├── app/                        # backend (FastAPI)
+├── app/                            # Backend (FastAPI + Python)
 │   ├── __init__.py
-│   ├── main.py                 # FastAPI app, /check endpoint
-│   ├── config.py               # env/settings
-│   ├── models.py               # pydantic schemas
-│   ├── extraction.py           # posting text -> structured fields (LLM + regex fallback)
-│   ├── signals.py              # parallel SerpApi calls
-│   ├── scoring.py              # weighted scoring engine
-│   ├── cache.py                # SQLite 24h query cache
-│   └── serpapi_client.py       # SerpApi HTTP wrapper
-├── tests/
-│   ├── test_scoring.py         # unit tests on scoring formula (fixed inputs)
-│   ├── test_extraction.py      # regex fallback tests
+│   ├── main.py                     # FastAPI app, /check endpoint
+│   ├── config.py                   # env/settings (pydantic-settings)
+│   ├── models.py                   # Pydantic request/response schemas
+│   ├── extraction.py               # Posting text → structured fields (LLM + regex fallback)
+│   ├── signals.py                  # 6 parallel SerpApi verification checks
+│   ├── scoring.py                  # Weighted scoring engine (base 50, clamped 0–100)
+│   ├── cache.py                    # SQLite 24h query cache
+│   └── serpapi_client.py           # Async SerpApi HTTP wrapper with mock fallback
+│
+├── frontend/                       # Frontend (React + Vite + Tailwind CSS)
+│   ├── index.html                  # Vite HTML entrypoint
+│   ├── package.json                # React 18, Vite, Tailwind CSS, Lucide React
+│   ├── vite.config.js              # Vite + @vitejs/plugin-react
+│   ├── tailwind.config.js          # Tailwind dark mode, fonts, content paths
+│   ├── postcss.config.js           # PostCSS + Autoprefixer
+│   └── src/
+│       ├── main.jsx                # React DOM root
+│       ├── App.jsx                 # Main app orchestrator (state, API calls, layout)
+│       ├── index.css               # Tailwind directives
+│       ├── components/
+│       │   ├── Header.jsx          # Brand title + dark/light theme toggle
+│       │   ├── PostingInput.jsx    # Textarea, sample loaders, char count, verify button
+│       │   ├── VerdictBanner.jsx   # Risk score gauge + verdict badge + summary
+│       │   ├── ScoreGauge.jsx      # Animated circular SVG risk score (0–100)
+│       │   ├── EntitiesGrid.jsx    # Extracted company, title, recruiter, domain cards
+│       │   ├── EvidenceTable.jsx   # Signal-by-signal breakdown with score deltas & links
+│       │   └── Footer.jsx          # Attribution footer
+│       ├── services/
+│       │   └── api.js              # API client for FastAPI /check endpoint
+│       └── constants/
+│           └── samples.js          # Scam (Apex Global) & legit (Stripe) test fixtures
+│
+├── tests/                          # Backend tests (pytest)
+│   ├── test_scoring.py             # Unit tests on scoring formula
+│   ├── test_extraction.py          # Regex fallback extraction tests
+│   ├── test_functional.py          # Functional end-to-end tests
+│   ├── test_serpapi.py             # SerpApi connectivity test
 │   └── fixtures/
-│       ├── scam_posting.txt    # real scraped scam example
-│       └── legit_posting.txt   # real company careers page text
-├── frontend/                   # frontend client
-│   ├── index.html              # interactive single-page UI
-│   ├── app.js                  # paste box -> POST /check -> render evidence table
-│   └── styles.css              # responsive dark/light styling with micro-animations
-├── .env.example
+│       ├── scam_posting.txt        # Sample scam posting fixture
+│       └── legit_posting.txt       # Sample legit posting fixture
+│
+├── demo/
+│   └── script.md                   # Demo video script
+├── .env.example                    # Environment variable template
 ├── .gitignore
-├── requirements.txt
-├── README.md
-└── demo/
-    └── script.md               # word-for-word demo video script
+├── requirements.txt                # Python dependencies
+└── README.md
 ```
 
 ## Setup
 
+### 1. Clone & Configure
+
 ```bash
 git clone <repo-url>
 cd fake-recruiter-verifier
-cp .env.example .env        # add your SERPAPI_KEY (get one free at serpapi.com)
+cp .env.example .env
+```
+
+Open `.env` and add your API key:
+
+```env
+SERPAPI_KEY=your_actual_serpapi_key_here
+```
+
+> Get a free key with 100 searches/month at [serpapi.com](https://serpapi.com)
+
+### 2. Start the Backend (FastAPI)
+
+```bash
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Visit `http://127.0.0.1:8000/docs` for the interactive API, or `POST /check`:
+The API will be available at `http://127.0.0.1:8000`.
+Visit `http://127.0.0.1:8000/docs` for the interactive Swagger UI.
 
 ```bash
 curl -X POST http://127.0.0.1:8000/check \
@@ -84,11 +123,15 @@ curl -X POST http://127.0.0.1:8000/check \
   -d '{"raw_text": "<paste job posting text here>"}'
 ```
 
-## Running the Frontend
+### 3. Start the Frontend (React + Vite)
 
-You can run the frontend either by:
-1. Opening `frontend/index.html` directly in any modern browser or serving via a local web server (e.g. `python -m http.server 5173 --directory frontend`).
-2. Or running the Vite dev server with `cd frontend && npm install && npm run dev`.
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173` in your browser. The React app communicates with the FastAPI backend on port 8000.
 
 ## Running Tests
 
@@ -105,6 +148,15 @@ Base score 50, adjusted by weighted signals, clamped to 0–100.
 - `< 35` → **Likely Legitimate**
 
 See `app/scoring.py` for exact weights.
+
+## Tech Stack
+
+| Layer    | Technology                                       |
+|----------|--------------------------------------------------|
+| Backend  | Python, FastAPI, Pydantic, httpx, SQLite         |
+| Frontend | React 18, Vite, Tailwind CSS, Lucide React       |
+| APIs     | SerpApi (Google, Google Maps, Google News)        |
+| Optional | Anthropic Claude (enhanced field extraction)      |
 
 ## Notes
 
