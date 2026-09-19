@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Color Tokens */
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-secondary: #8b5cf6;
+  --color-accent: #06b6d4;
+
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+
+  /* Neutrals (Light) */
+  --color-bg-base: #f8fafc;
+  --color-bg-card: rgba(255, 255, 255, 0.9);
+  --color-bg-elevated: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text-main: #0f172a;
+  --color-text-muted: #64748b;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Transitions */
+  --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark {
+  /* Neutrals (Dark) */
+  --color-bg-base: #030712;
+  --color-bg-card: rgba(15, 23, 42, 0.75);
+  --color-bg-elevated: #0f172a;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-text-main: #f8fafc;
+  --color-text-muted: #94a3b8;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--color-bg-base);
+    color: var(--color-text-main);
+    overflow-x: hidden;
+  }
+}
+
+/* Glassmorphic Cyber Cards */
+.glass-panel {
+  background: var(--color-bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-border);
+}
+
+.glass-panel-elevated {
+  background: var(--color-bg-elevated);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border);
+}
+
+/* Radar Pulse Animations */
+@keyframes radar-sweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.04);
+  }
+}
+
+.animate-radar {
+  animation: radar-sweep 4s linear infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
