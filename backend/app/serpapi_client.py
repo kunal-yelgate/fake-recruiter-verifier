@@ -64,10 +64,15 @@ class SerpApiClient:
                 "crypto",
                 "amazon-careers.net",
                 "apexglobal-staffing.org",
+                "apex",
                 "quickhiring",
                 "work-from-home-instant",
                 "hr-desk",
                 "gmail.com",
+                "scam",
+                "fraud",
+                "lawsuit",
+                "complaints",
             ]
         )
 

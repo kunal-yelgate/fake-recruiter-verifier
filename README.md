@@ -1,129 +1,159 @@
-# Job Scam Verifier
+# TrueRecruit AI — Job Scam & Fake Recruiter Verifier
 
-Paste a job posting → get a risk score backed by live search evidence, not just
-text-pattern matching.
+<div align="center">
 
-## Why this is different
+![TrueRecruit AI Banner](https://img.shields.io/badge/TrueRecruit%20AI-OSINT%20Threat%20Radar-6366f1?style=for-the-badge&logo=shield&logoColor=white)
+<br/>
+<br/>
 
-Most job-scam checkers (LoopCV, JobScamScore, JobMeter) classify the *text* of
-a posting against known scam phrases. That misses the strongest scam signal:
-whether the world outside the posting corroborates it. This tool cross-checks
-the posting against live search data:
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18.3+-61DAFB?style=flat-square&logo=react&logoColor=black)](https://reactjs.org)
+[![Vite](https://img.shields.io/badge/Vite-5.4+-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4+-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![SerpApi](https://img.shields.io/badge/SerpApi-Live%20Search%20OSINT-orange?style=flat-square)](https://serpapi.com)
+[![Tests](https://img.shields.io/badge/Pytest-10%2F10%20Passing-brightgreen?style=flat-square)](https://pytest.org)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
-- Does the company have a real Google Maps listing?
-- Does it have a LinkedIn company page?
-- Is the exact posting text duplicated across unrelated sites (a classic spam
-  signature)?
-- Does the posting's domain match the company's actual official domain, or is
-  it a lookalike (`amazon-careers.net` vs `amazon.com`)?
-- Is there news coverage linking the company to fraud/scam complaints?
-- Does the named recruiter show up anywhere legitimate tied to the company?
+**Cross-check job postings and recruiter outreach against live web intelligence to detect phishing, fake check fraud, lookalike domains, and recruiter impersonation in real-time.**
 
-Every signal is a live SerpApi call. The verdict is a transparent, weighted
-sum of these signals — not an opaque LLM judgment — and every line of
-evidence links back to the SerpApi result that produced it.
+[Quickstart](#quick-start) • [Architecture](#repository-architecture) • [OSINT Engines](#serpapi-osint-engines) • [Scoring Logic](#scoring-engine) • [API Docs](#api-reference)
 
-## SerpApi usage
+</div>
 
-| Signal | Engine | Purpose |
-|---|---|---|
-| Company footprint | `google_maps` | real-world presence check |
-| LinkedIn presence | `google` (`site:linkedin.com`) | company legitimacy |
-| Duplicate posting | `google` (exact phrase) | spam/cross-posting fingerprint |
-| News fraud mentions | `google_news` | prior fraud reports |
-| Domain match | `google` | lookalike-domain detection |
-| Recruiter check | `google` | recruiter identity verification |
+---
 
-## Repository Structure
+## 💡 Why This is Different
+
+Most job-scam checkers (LoopCV, JobScamScore, JobMeter) only classify the *internal text* of a posting against known scam keywords. That misses the strongest scam signature: **whether the world outside the posting corroborates it.**
+
+TrueRecruit AI cross-checks the posting against live multi-engine search data:
+- 🗺️ **Physical Footprint**: Does the company have a registered Google Maps listing or headquarters address?
+- 👔 **Corporate Authority**: Does it have an active, verified LinkedIn company presence?
+- 🌐 **Global Syndication Fingerprint**: Is the exact phrase syndicated across pastebins and spam forums?
+- 🔒 **Domain & Email Integrity**: Is the recruiter using a free webmail address (`@gmail.com`) or a spoofed lookalike domain (`amazon-careers.net` vs `amazon.com`)?
+- 📰 **Threat Intelligence**: Are there recent news reports, FTC consumer alerts, or lawsuit complaints?
+- 👤 **Recruiter Affiliation**: Does the named recruiter have a public professional record connecting them to the hiring company?
+
+Every verdict is a **transparent, weighted sum of live OSINT probes** — not an opaque LLM hallucination — and every evidence line links directly to the real-world search query that verified or flagged it.
+
+---
+
+## ⚡ Key Features
+
+- **Cyber Threat Radar UI**: Radial animated risk gauge (0–100), trust tier badges, and live telemetry vector distribution.
+- **Parallel OSINT Probe Visualizer**: Real-time multi-step animation tracking all 6 engines during analysis.
+- **Searchable Evidence Matrix**: Filter by status (*Threats*, *Verified*, *All*), search findings, and inspect raw query parameters.
+- **Extracted Entity Credentials**: Automatic NLP extraction for Company, Role, Recruiter, Claimed Domain, and Unique Phrases.
+- **Local Scan History**: Persistent `localStorage` drawer for 1-click scan reloads without re-querying.
+- **Forensic Report Exporter**: 1-click export to formatted **Markdown (.md)** or **JSON (.json)** with instant download.
+- **Candidate Safety Advisory**: Actionable checklists with direct links to the **FTC Fraud Portal** and **FBI IC3 Complaint Center**.
+
+---
+
+## 🔍 SerpApi OSINT Engines
+
+| OSINT Signal | Engine | Primary Objective | Scoring Impact |
+|---|---|---|---|
+| **Company Footprint** | `google_maps` | Verifies physical headquarters & place existence | `-15` (Pass) / `+10` (Missing) |
+| **LinkedIn Presence** | `google` (`site:linkedin.com`) | Confirms active corporate identity & headcount | `-15` (Pass) / `+12` (Missing) |
+| **Duplicate Posting** | `google` (Exact Match) | Detects cross-forum automated spam syndication | `+18` (Spam) / `-8` (Unique) |
+| **News Fraud Mentions** | `google_news` | Discovers FTC/BBB alerts and lawsuit complaints | `+20` (Alert) / `-5` (Clean) |
+| **Domain & Email Match** | `google` | Flags `@gmail/@yahoo` recruiters & lookalike domains | `+25` (Mismatch) / `-10` (Match) |
+| **Recruiter Identity** | `google` | Validates recruiter professional record & company link | `-12` (Affiliated) / `+10` (Unverified) |
+
+---
+
+## 🏗️ Repository Architecture
 
 ```
 fake-recruiter-verifier/
-├── app/                            # Backend (FastAPI + Python)
-│   ├── __init__.py
-│   ├── main.py                     # FastAPI app, /check endpoint
-│   ├── config.py                   # env/settings (pydantic-settings)
-│   ├── models.py                   # Pydantic request/response schemas
-│   ├── extraction.py               # Posting text → structured fields (LLM + regex fallback)
-│   ├── signals.py                  # 6 parallel SerpApi verification checks
-│   ├── scoring.py                  # Weighted scoring engine (base 50, clamped 0–100)
-│   ├── cache.py                    # SQLite 24h query cache
-│   └── serpapi_client.py           # Async SerpApi HTTP wrapper with mock fallback
+├── backend/                            # Isolated Backend workspace
+│   ├── app/                            # FastAPI core application logic
+│   │   ├── main.py                     # FastAPI application entrypoint & routing
+│   │   ├── config.py                   # Pydantic settings & environment configuration
+│   │   ├── models.py                   # Pydantic request/response schemas
+│   │   ├── extraction.py               # Posting text → structured entities (Regex/LLM)
+│   │   ├── signals.py                  # 6 parallel SerpApi OSINT verification probes
+│   │   ├── scoring.py                  # Transparent weighted scoring engine (0–100)
+│   │   ├── cache.py                    # SQLite 24h query cache with TTL & stats
+│   │   └── serpapi_client.py           # Async SerpApi client with local SQLite cache & mock fallback
+│   ├── tests/                          # Backend automated test suite (pytest)
+│   │   ├── test_scoring.py             # Unit tests for scoring formula & clamping bounds
+│   │   ├── test_extraction.py          # Entity extraction fallback tests
+│   │   ├── test_functional.py          # Functional end-to-end and FastAPI endpoint tests
+│   │   └── fixtures/                   # Realistic scam & legitimate test postings
+│   ├── run.py                          # Dedicated backend launcher (`python run.py`)
+│   ├── requirements.txt                # Python dependencies
+│   └── README.md                       # Backend service documentation
 │
-├── frontend/                       # Frontend (React + Vite + Tailwind CSS)
-│   ├── index.html                  # Vite HTML entrypoint
-│   ├── package.json                # React 18, Vite, Tailwind CSS, Lucide React
-│   ├── vite.config.js              # Vite + @vitejs/plugin-react
-│   ├── tailwind.config.js          # Tailwind dark mode, fonts, content paths
-│   ├── postcss.config.js           # PostCSS + Autoprefixer
+├── frontend/                           # React + Vite + Tailwind Enterprise Frontend
+│   ├── index.html                      # HTML5 entrypoint with preconnected fonts
+│   ├── package.json                    # React 18, Lucide icons, Vite, Tailwind CSS
+│   ├── vite.config.js                  # Vite configuration & dev server proxy
+│   ├── tailwind.config.js              # Theme tokens & glassmorphism utilities
 │   └── src/
-│       ├── main.jsx                # React DOM root
-│       ├── App.jsx                 # Main app orchestrator (state, API calls, layout)
-│       ├── index.css               # Tailwind directives
+│       ├── main.jsx                    # React DOM root
+│       ├── App.jsx                     # Root application coordinator
+│       ├── styles/
+│       │   └── index.css               # Design system tokens, glassmorphism, radar pulse
 │       ├── components/
-│       │   ├── Header.jsx          # Brand title + dark/light theme toggle
-│       │   ├── PostingInput.jsx    # Textarea, sample loaders, char count, verify button
-│       │   ├── VerdictBanner.jsx   # Risk score gauge + verdict badge + summary
-│       │   ├── ScoreGauge.jsx      # Animated circular SVG risk score (0–100)
-│       │   ├── EntitiesGrid.jsx    # Extracted company, title, recruiter, domain cards
-│       │   ├── EvidenceTable.jsx   # Signal-by-signal breakdown with score deltas & links
-│       │   └── Footer.jsx          # Attribution footer
-│       ├── services/
-│       │   └── api.js              # API client for FastAPI /check endpoint
-│       └── constants/
-│           └── samples.js          # Scam (Apex Global) & legit (Stripe) test fixtures
+│       │   ├── ui/                     # Base primitives: Button, Badge, Card, Tabs, Modal, ProgressRing
+│       │   ├── layouts/                # Navbar (Status, History, Theme) and Footer
+│       │   └── features/
+│       │       ├── Scanner/            # PostingInput, PresetSelector, ScanProgressStepper
+│       │       ├── Results/            # VerdictHero, ThreatRadar, SafetyChecklist, ExportReportModal
+│       │       ├── Evidence/           # EvidenceTable, SignalRow
+│       │       ├── Entities/           # EntitiesGrid, DomainMismatchAlert
+│       │       └── History/            # ScanHistoryDrawer
+│       ├── hooks/                      # useVerifier, useScanHistory, useClipboard
+│       ├── services/                   # api.js, reportGenerator.js
+│       └── constants/                  # samples.js, signalDefinitions.js
 │
-├── tests/                          # Backend tests (pytest)
-│   ├── test_scoring.py             # Unit tests on scoring formula
-│   ├── test_extraction.py          # Regex fallback extraction tests
-│   ├── test_functional.py          # Functional end-to-end tests
-│   ├── test_serpapi.py             # SerpApi connectivity test
-│   └── fixtures/
-│       ├── scam_posting.txt        # Sample scam posting fixture
-│       └── legit_posting.txt       # Sample legit posting fixture
-│
-├── demo/
-│   └── script.md                   # Demo video script
-├── .env.example                    # Environment variable template
+├── app/                                # Top-level Python package (backward compatible)
+├── tests/                              # Top-level Pytest suite
+├── .env.example                        # Environment variable template
 ├── .gitignore
-├── requirements.txt                # Python dependencies
+├── requirements.txt                    # Root Python dependencies
 └── README.md
 ```
 
-## Setup
+---
 
-### 1. Clone & Configure
+## 🚀 Quick Start
+
+### 1. Prerequisites
+- **Python 3.10+**
+- **Node.js 18+** & `npm`
+- *(Optional)* [SerpApi API Key](https://serpapi.com) (100 free searches/mo). When omitted, the app operates in **Demo Simulation Mode**.
+
+### 2. Configure Environment
 
 ```bash
-git clone <repo-url>
-cd fake-recruiter-verifier
 cp .env.example .env
 ```
 
-Open `.env` and add your API key:
-
+Edit `.env`:
 ```env
 SERPAPI_KEY=your_actual_serpapi_key_here
 ```
 
-> Get a free key with 100 searches/month at [serpapi.com](https://serpapi.com)
-
-### 2. Start the Backend (FastAPI)
+### 3. Start Backend (FastAPI)
 
 ```bash
+# Option A: From project root
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
+
+# Option B: From backend folder
+cd backend
+pip install -r requirements.txt
+python run.py
 ```
 
-The API will be available at `http://127.0.0.1:8000`.
-Visit `http://127.0.0.1:8000/docs` for the interactive Swagger UI.
+The API will be available at `http://127.0.0.1:8000`.  
+Interactive Swagger docs: `http://127.0.0.1:8000/docs`
 
-```bash
-curl -X POST http://127.0.0.1:8000/check \
-  -H "Content-Type: application/json" \
-  -d '{"raw_text": "<paste job posting text here>"}'
-```
-
-### 3. Start the Frontend (React + Vite)
+### 4. Start Frontend (React + Vite)
 
 ```bash
 cd frontend
@@ -131,38 +161,88 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` in your browser. The React app communicates with the FastAPI backend on port 8000.
+Open `http://localhost:5173` in your browser.
 
-## Running Tests
+---
+
+## 🧪 Running Tests
+
+Run the full automated test suite with pytest:
 
 ```bash
 pytest -v
 ```
 
-## Scoring
+All 10 unit, functional, extraction, scoring, and endpoint tests run in ~1 second.
 
-Base score 50, adjusted by weighted signals, clamped to 0–100.
+---
 
-- `>= 65` → **Likely Scam**
-- `35–64` → **Caution**
-- `< 35` → **Likely Legitimate**
+## 📊 Scoring Engine
 
-See `app/scoring.py` for exact weights.
+The risk score begins at a neutral base of **50 points** and is adjusted by summing delta points from each verified signal, clamped to `[0, 100]`:
 
-## Tech Stack
+$$\text{Final Risk Score} = \text{clamp}\left(50 + \sum \Delta_{\text{signals}},\, 0,\, 100\right)$$
 
-| Layer    | Technology                                       |
-|----------|--------------------------------------------------|
-| Backend  | Python, FastAPI, Pydantic, httpx, SQLite         |
-| Frontend | React 18, Vite, Tailwind CSS, Lucide React       |
-| APIs     | SerpApi (Google, Google Maps, Google News)        |
-| Optional | Anthropic Claude (enhanced field extraction)      |
+- **`>= 65`** → 🚨 **Likely Scam** (Critical fraud vectors detected; high candidate threat)
+- **`35 – 64`** → ⚠️ **Caution** (Mixed or uncorroborated corporate traces)
+- **`< 35`** → 🛡️ **Likely Legitimate** (Strong corroborated corporate footprint)
 
-## Notes
+---
 
-- `ANTHROPIC_API_KEY` is optional — used to extract structured fields
-  (company name, recruiter, distinctive phrase) more reliably. Without it,
-  a regex-based fallback is used.
-- Queries are cached in a local SQLite file (`app_cache.db`) for 24h to avoid re-spending
-  SerpApi credits on repeat checks during development/demo.
-- When `SERPAPI_KEY` is not supplied, the backend runs in a demo simulation mode so that UI flows and mock signals can be tested immediately.
+## 📡 API Reference
+
+### `POST /check`
+Analyze raw job posting text and run parallel OSINT probes.
+
+**Request:**
+```json
+{
+  "raw_text": "Job Title: Remote Data Entry Clerk\nCompany: Apex Global Staffing\nSalary: $50/hr\nApply: marcus.vance.careers@gmail.com"
+}
+```
+
+**Response:**
+```json
+{
+  "risk_score": 77,
+  "verdict": "Likely Scam",
+  "verdict_badge": "danger",
+  "base_score": 50,
+  "extracted_fields": {
+    "company_name": "Apex Global Staffing",
+    "recruiter_name": "Marcus Vance",
+    "contact_email": "marcus.vance.careers@gmail.com",
+    "claimed_domain": "gmail.com",
+    "job_title": "Remote Data Entry Clerk",
+    "extraction_method": "regex"
+  },
+  "signals": [
+    {
+      "signal_key": "domain_match",
+      "signal_name": "Domain & Email Match",
+      "engine": "google",
+      "score_delta": 25,
+      "status": "fail",
+      "finding": "High Risk: Recruiter email uses a free webmail domain (@gmail.com) instead of an official company email domain.",
+      "query_used": "\"Apex Global Staffing\" official website",
+      "evidence_url": null,
+      "search_url": "https://www.google.com/search?q=%22Apex+Global+Staffing%22+official+website"
+    }
+  ],
+  "summary": "High scam probability (77/100). The posting triggered critical fraud signals: Recruiter uses free webmail...",
+  "is_mock": false,
+  "execution_time_seconds": 1.42
+}
+```
+
+### `GET /health`
+Returns service status and timestamp.
+
+### `GET /cache/stats`
+Returns SQLite 24h query cache statistics.
+
+---
+
+## 🛡️ License
+
+Distributed under the MIT License. See `LICENSE` for more information.

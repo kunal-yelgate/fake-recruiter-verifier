@@ -47,8 +47,26 @@ async def check_company_footprint(fields: ExtractedFields) -> SignalResult:
     search_url = f"https://www.google.com/maps/search/{urllib.parse.quote_plus(query)}"
     evidence_url = None
 
-    if place or (local_results and len(local_results) > 0):
-        top_place = place or local_results[0]
+    match_found = False
+    top_place = None
+    candidates = []
+    if place:
+        candidates.append(place)
+    if local_results and isinstance(local_results, list):
+        candidates.extend(local_results)
+
+    company_clean = "".join(c for c in company.lower() if c.isalnum() or c.isspace())
+    stopwords = {"inc", "llc", "corp", "corporation", "ltd", "limited", "group", "co", "the", "services", "solutions", "agency", "staffing"}
+    specific_words = [w for w in company_clean.split() if w not in stopwords and len(w) >= 3]
+    
+    for res in candidates:
+        res_title = res.get("title", "").lower()
+        if specific_words and all(w in res_title for w in specific_words):
+            top_place = res
+            match_found = True
+            break
+
+    if match_found and top_place:
         title = top_place.get("title", company)
         addr = top_place.get("address", "Registered location")
         evidence_url = top_place.get("website") or search_url
@@ -342,12 +360,20 @@ async def check_recruiter_identity(fields: ExtractedFields) -> SignalResult:
 
     search_url = f"https://www.google.com/search?q={urllib.parse.quote_plus(query)}"
 
+    recruiter_parts = recruiter.lower().split()
+    company_clean = "".join(c for c in company.lower() if c.isalnum() or c.isspace())
+    company_parts = [p for p in company_clean.split() if p not in {"inc", "llc", "corp", "ltd", "group", "co", "the", "services", "solutions", "staffing"} and len(p) >= 3]
+
     for item in organic:
         title = item.get("title", "").lower()
         snippet = item.get("snippet", "").lower()
         link = item.get("link", "")
-        recruiter_parts = recruiter.lower().split()
-        if all(part in (title + snippet) for part in recruiter_parts):
+        combined = title + " " + snippet
+        
+        has_recruiter = all(part in combined for part in recruiter_parts)
+        has_company = not company_parts or any(cp in combined for cp in company_parts)
+
+        if has_recruiter and has_company:
             return SignalResult(
                 signal_key="recruiter_check",
                 signal_name="Recruiter Identity Verification",

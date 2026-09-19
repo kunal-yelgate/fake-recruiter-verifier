@@ -92,6 +92,15 @@ class QueryCache:
         except Exception:
             pass
 
+    def clear(self):
+        """Clear all cached queries."""
+        try:
+            with self._get_connection() as conn:
+                conn.execute("DELETE FROM serpapi_cache")
+                conn.commit()
+        except Exception:
+            pass
+
     def get_stats(self) -> Dict[str, Any]:
         """Return cache health metrics."""
         try:
