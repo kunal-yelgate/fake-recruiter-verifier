@@ -1,11 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
-import Header from "./components/Header";
-import PostingInput from "./components/PostingInput";
-import VerdictBanner from "./components/VerdictBanner";
-import EntitiesGrid from "./components/EntitiesGrid";
-import EvidenceTable from "./components/EvidenceTable";
-import Footer from "./components/Footer";
-import { verifyPosting } from "./services/api";
+import { Navbar } from "./components/layouts/Navbar";
+import { Footer } from "./components/layouts/Footer";
+import { PostingInput } from "./components/features/Scanner/PostingInput";
+import { VerdictHero } from "./components/features/Results/VerdictHero";
+import { ThreatRadar } from "./components/features/Results/ThreatRadar";
+import { SafetyChecklist } from "./components/features/Results/SafetyChecklist";
+import { ExportReportModal } from "./components/features/Results/ExportReportModal";
+import { EntitiesGrid } from "./components/features/Entities/EntitiesGrid";
+import { EvidenceTable } from "./components/features/Evidence/EvidenceTable";
+import { ScanHistoryDrawer } from "./components/features/History/ScanHistoryDrawer";
+import { useVerifier } from "./hooks/useVerifier";
+import { useScanHistory } from "./hooks/useScanHistory";
+import { getBackendStatus } from "./services/api";
 
 export default function App() {
   const [isDark, setIsDark] = useState(() => {
@@ -14,12 +20,30 @@ export default function App() {
   });
 
   const [text, setText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [results, setResults] = useState(null);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [backendHealth, setBackendHealth] = useState({ online: true });
 
   const resultsRef = useRef(null);
+  const { history, addScan, removeScan, clearHistory, count: historyCount } = useScanHistory();
 
+  // Initialize verifier hook
+  const {
+    verify,
+    results,
+    setResults,
+    isLoading,
+    error,
+    activeStepIndex,
+    scanSteps,
+  } = useVerifier((data, rawText) => {
+    addScan(data, rawText);
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+  });
+
+  // Handle theme toggle
   useEffect(() => {
     const root = document.documentElement;
     if (isDark) {
@@ -31,63 +55,106 @@ export default function App() {
     }
   }, [isDark]);
 
-  const handleVerify = async () => {
-    if (text.trim().length < 10) {
-      setError("Please enter a longer job posting or recruiter message (minimum 10 characters).");
-      return;
-    }
+  // Check health periodically
+  useEffect(() => {
+    getBackendStatus().then(setBackendHealth);
+  }, []);
 
-    setError(null);
-    setIsLoading(true);
-
-    try {
-      const data = await verifyPosting(text.trim());
-      setResults(data);
-      // Smooth scroll to results
-      setTimeout(() => {
-        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
-    } catch (err) {
-      console.error("Verification error:", err);
-      setError(err.message || "Failed to reach backend verification API.");
-    } finally {
-      setIsLoading(false);
-    }
+  const handleVerify = () => {
+    verify(text);
   };
 
+  const handleSelectHistoryScan = (historyItem) => {
+    setText(historyItem.rawText || "");
+    setResults(historyItem.result);
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+  };
+
+  const isPass = results ? results.risk_score < 35 : false;
+  const isFail = results ? results.risk_score >= 65 : false;
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
-      <div className="max-w-5xl mx-auto space-y-8">
-        <Header isDark={isDark} onToggleTheme={() => setIsDark((prev) => !prev)} />
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 selection:bg-indigo-500 selection:text-white transition-colors duration-200 flex flex-col justify-between">
+      {/* Top Navigation Bar */}
+      <Navbar
+        isDark={isDark}
+        onToggleTheme={() => setIsDark((prev) => !prev)}
+        onOpenHistory={() => setIsHistoryOpen(true)}
+        historyCount={historyCount}
+        isBackendConnected={backendHealth.online}
+        isMockMode={results?.is_mock}
+      />
 
-        <main className="space-y-8">
-          <PostingInput
-            text={text}
-            setText={setText}
-            onVerify={handleVerify}
-            isLoading={isLoading}
-            error={error}
-          />
+      {/* Main Content Area */}
+      <main className="max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 flex-1">
+        {/* Scanner Input Console */}
+        <PostingInput
+          text={text}
+          setText={setText}
+          onVerify={handleVerify}
+          isLoading={isLoading}
+          error={error}
+          scanSteps={scanSteps}
+          activeStepIndex={activeStepIndex}
+        />
 
-          {results && (
-            <div ref={resultsRef} className="space-y-6 pt-4 animate-in fade-in duration-500">
-              <VerdictBanner
+        {/* Forensic Results Section */}
+        {results && (
+          <div
+            ref={resultsRef}
+            className="space-y-6 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
+          >
+            {/* Verdict Hero Banner */}
+            <VerdictHero
+              score={results.risk_score}
+              verdict={results.verdict}
+              verdictBadge={results.verdict_badge}
+              summary={results.summary}
+              isMock={results.is_mock}
+              executionTime={results.execution_time_seconds}
+              onOpenExport={() => setIsExportOpen(true)}
+            />
+
+            {/* Extracted Entities Grid */}
+            <EntitiesGrid extractedFields={results.extracted_fields} />
+
+            {/* 2-Column Insight Panels: Threat Radar & Safety Advisory */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ThreatRadar signals={results.signals} />
+              <SafetyChecklist
                 score={results.risk_score}
-                verdict={results.verdict}
-                verdictBadge={results.verdict_badge}
-                summary={results.summary}
-                isMock={results.is_mock}
+                isFail={isFail}
+                isPass={isPass}
               />
-
-              <EntitiesGrid extractedFields={results.extracted_fields} />
-
-              <EvidenceTable signals={results.signals} />
             </div>
-          )}
-        </main>
 
-        <Footer />
-      </div>
+            {/* Comprehensive OSINT Evidence Matrix */}
+            <EvidenceTable signals={results.signals} />
+          </div>
+        )}
+      </main>
+
+      {/* Footer */}
+      <Footer />
+
+      {/* Slide-out Scan History Drawer */}
+      <ScanHistoryDrawer
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        history={history}
+        onSelectScan={handleSelectHistoryScan}
+        onRemoveScan={removeScan}
+        onClearHistory={clearHistory}
+      />
+
+      {/* Export Report Modal */}
+      <ExportReportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        results={results}
+      />
     </div>
   );
 }
