@@ -165,6 +165,25 @@ Open `http://localhost:5173` in your browser.
 
 ---
 
+## 🌐 Deploy Frontend to Vercel
+
+The frontend is fully configured for seamless, zero-config deployment to [Vercel](https://vercel.com):
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/kunal-yelgate/fake-recruitment-verifier)
+
+### Deployment Steps:
+1. **Import Repository**: In your Vercel dashboard, click **Add New Project** and select this repository.
+2. **Build Settings**: Vercel automatically detects the included `vercel.json` and Vite configuration.
+   - **Framework Preset:** Vite
+   - **Root Directory:** `./` (or `frontend`)
+   - **Build Command:** `cd frontend && npm install && npm run build`
+   - **Output Directory:** `frontend/dist`
+3. **Environment Variables**:
+   - Add `VITE_API_BASE_URL` with your deployed backend URL (e.g. `https://your-backend-api.onrender.com` or Railway/Fly.io URL).
+4. Click **Deploy**!
+
+---
+
 ## 🧪 Running Tests
 
 Run the full automated test suite with pytest:

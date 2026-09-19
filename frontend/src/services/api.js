@@ -1,5 +1,14 @@
+const envApiUrl = import.meta.env.VITE_API_BASE_URL;
+
 const API_BASE_URL =
-  window.location.port === "8000" ? "" : "http://127.0.0.1:8000";
+  envApiUrl && envApiUrl.trim() !== ""
+    ? envApiUrl.replace(/\/+$/, "")
+    : typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    ? window.location.port === "8000"
+      ? ""
+      : "http://127.0.0.1:8000"
+    : "";
 
 /**
  * Submits raw posting text to FastAPI /check endpoint with timeout protection.
